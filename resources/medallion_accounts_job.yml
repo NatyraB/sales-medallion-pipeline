@@ -1,0 +1,92 @@
+# Medallion Pipeline Job Definition
+# Accounts Data Engineering Pipeline
+
+resources:
+  jobs:
+    medallion_accounts_pipeline:
+      name: "[${bundle.target}] Medallion Accounts Pipeline"
+      description: |
+        End-to-end Medallion Architecture pipeline for accounts data.
+        Processes Bronze → Silver → Gold layers with proper metadata and transformations.
+      
+      tags:
+        project: sales-medallion-pipeline
+        environment: ${bundle.target}
+        data_domain: accounts
+      
+      # Email notifications
+      email_notifications:
+        on_failure:
+          - ${workspace.current_user.userName}
+      
+      # Job parameters
+      parameters:
+        - name: catalog
+          default: ${var.catalog}
+        - name: schema
+          default: ${var.schema}
+      
+      # Task definitions - Sequential pipeline execution
+      tasks:
+        # Bronze Layer - Raw Data Ingestion
+        - task_key: bronze_ingest_accounts
+          description: "Ingest raw account data into Bronze layer with metadata"
+          notebook_task:
+            notebook_path: ../src/bronze/01_ingest_accounts.py
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+            source: WORKSPACE
+          # Use serverless compute
+          
+        # Silver Layer - Data Cleansing & Standardization
+        - task_key: silver_transform_accounts
+          description: "Clean, validate, and standardize account data"
+          depends_on:
+            - task_key: bronze_ingest_accounts
+          notebook_task:
+            notebook_path: ../src/silver/01_transform_accounts.py
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+            source: WORKSPACE
+          
+        # Gold Layer - Business-Ready Tables
+        - task_key: gold_accounts
+          description: "Create curated accounts dimension table"
+          depends_on:
+            - task_key: silver_transform_accounts
+          notebook_task:
+            notebook_path: ../src/gold/01_gold_accounts.py
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+            source: WORKSPACE
+          
+        - task_key: gold_country_analytics
+          description: "Aggregate account metrics by country"
+          depends_on:
+            - task_key: silver_transform_accounts
+          notebook_task:
+            notebook_path: ../src/gold/02_gold_country_analytics.py
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+            source: WORKSPACE
+          
+        - task_key: gold_size_analytics
+          description: "Aggregate account metrics by company size"
+          depends_on:
+            - task_key: silver_transform_accounts
+          notebook_task:
+            notebook_path: ../src/gold/03_gold_size_analytics.py
+            base_parameters:
+              catalog: "{{job.parameters.catalog}}"
+              schema: "{{job.parameters.schema}}"
+            source: WORKSPACE
+      
+      # Schedule - Daily at 6 AM UTC
+      schedule:
+        quartz_cron_expression: "0 0 6 * * ?"
+        timezone_id: UTC
+        pause_status: PAUSED  # Paused by default, enable in production

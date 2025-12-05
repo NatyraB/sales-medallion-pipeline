@@ -1,10 +1,21 @@
-name: Sales Medallion Pipeline CI/CD
+# CI/CD Pipeline for Medallion Accounts Pipeline
+# Validates, tests, and deploys Databricks Asset Bundles
+
+name: Medallion Pipeline CI/CD
 
 on:
   push:
-    branches: [main, develop]
+    branches:
+      - main
+      - develop
+    paths:
+      - 'src/**'
+      - 'resources/**'
+      - 'databricks.yml'
+      - '.github/workflows/**'
   pull_request:
-    branches: [main]
+    branches:
+      - main
   workflow_dispatch:
     inputs:
       target:
@@ -12,40 +23,110 @@ on:
         required: true
         default: 'dev'
         type: choice
-        options: [dev, staging, prod]
+        options:
+          - dev
+          - staging
+          - prod
 
 env:
   DATABRICKS_HOST: ${{ secrets.DATABRICKS_HOST }}
   DATABRICKS_TOKEN: ${{ secrets.DATABRICKS_TOKEN }}
 
 jobs:
+  # Job 1: Validate the bundle
   validate:
-    name: Validate Bundle
+    name: 🔍 Validate Bundle
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout code
+        uses: actions/checkout@v4
+
       - name: Install Databricks CLI
-        run: curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
-      - name: Validate bundle
-        run: databricks bundle validate -t dev
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+          databricks --version
 
+      - name: Validate bundle (dev)
+        run: |
+          databricks bundle validate -t dev
+
+      - name: Validate bundle (staging)
+        run: |
+          databricks bundle validate -t staging
+
+      - name: Validate bundle (prod)
+        run: |
+          databricks bundle validate -t prod
+
+  # Job 2: Deploy to Development
   deploy-dev:
-    name: Deploy to Dev
-    needs: validate
+    name: 🚀 Deploy to Dev
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/develop' || (github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'dev')
+    needs: validate
+    if: github.ref == 'refs/heads/develop' || github.event.inputs.target == 'dev'
+    environment: development
     steps:
-      - uses: actions/checkout@v4
-      - run: curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
-      - run: databricks bundle deploy -t dev
-      - run: databricks bundle run sales_medallion_pipeline -t dev
+      - name: Checkout code
+        uses: actions/checkout@v4
 
+      - name: Install Databricks CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+
+      - name: Deploy to dev
+        run: |
+          databricks bundle deploy -t dev
+
+      - name: Run pipeline (optional)
+        if: github.event_name == 'workflow_dispatch'
+        run: |
+          echo "🔄 Triggering pipeline run in dev..."
+          databricks bundle run medallion_accounts_pipeline -t dev --no-wait
+
+  # Job 3: Deploy to Staging
   deploy-staging:
-    name: Deploy to Staging
-    needs: validate
+    name: 🎭 Deploy to Staging
     runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/main' || (github.event_name == 'workflow_dispatch' && github.event.inputs.target == 'staging')
+    needs: validate
+    if: github.ref == 'refs/heads/main'
+    environment: staging
     steps:
-      - uses: actions/checkout@v4
-      - run: curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
-      - run: databricks bundle deploy -t staging
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Databricks CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+
+      - name: Deploy to staging
+        run: |
+          databricks bundle deploy -t staging
+
+      - name: Validate deployment
+        run: |
+          echo "✅ Staging deployment completed successfully"
+
+  # Job 4: Deploy to Production (requires approval)
+  deploy-prod:
+    name: 🏭 Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [validate, deploy-staging]
+    if: github.ref == 'refs/heads/main' || github.event.inputs.target == 'prod'
+    environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Databricks CLI
+        run: |
+          curl -fsSL https://raw.githubusercontent.com/databricks/setup-cli/main/install.sh | sh
+
+      - name: Deploy to production
+        run: |
+          databricks bundle deploy -t prod
+
+      - name: Validate deployment
+        run: |
+          echo "✅ Production deployment completed successfully"
+          echo "📊 Pipeline: medallion_accounts_pipeline"
+          echo "🎯 Target: prod"

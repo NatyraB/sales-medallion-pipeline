@@ -1,55 +1,52 @@
-# Databricks Asset Bundle - Sales Medallion Architecture Pipeline
+# Databricks Asset Bundle Configuration
+# Sales Medallion Pipeline - Accounts Data Engineering
+
 bundle:
-  name: sales_medallion_pipeline
+  name: sales-medallion-pipeline
 
 variables:
   catalog:
-    description: Unity Catalog name
+    description: "Unity Catalog name for the pipeline"
     default: natyra_demo
-  schema_bronze:
-    description: Bronze layer schema
-    default: sales_bronze
-  schema_silver:
-    description: Silver layer schema
-    default: sales_silver
-  schema_gold:
-    description: Gold layer schema
-    default: sales_gold
+  schema:
+    description: "Schema name for the Medallion tables"
+    default: sales
+  source_table:
+    description: "Source table name for raw account data"
+    default: bronze_accounts
 
 include:
   - resources/*.yml
 
+# Workspace configuration - uses bundle variables
 workspace:
-  host: https://e2-demo-field-eng.cloud.databricks.com
+  root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}
 
+# Multi-environment targets
 targets:
   dev:
     mode: development
     default: true
     workspace:
-      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+      host: https://e2-demo-field-eng.cloud.databricks.com
     variables:
       catalog: natyra_demo
-      schema_bronze: sales_bronze_dev
-      schema_silver: sales_silver_dev
-      schema_gold: sales_gold_dev
+      schema: sales
 
   staging:
     mode: development
     workspace:
-      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+      host: https://e2-demo-field-eng.cloud.databricks.com
     variables:
       catalog: natyra_demo
-      schema_bronze: sales_bronze_staging
-      schema_silver: sales_silver_staging
-      schema_gold: sales_gold_staging
+      schema: sales_staging
 
   prod:
     mode: production
     workspace:
-      root_path: /Workspace/Shared/.bundle/${bundle.name}/${bundle.target}
+      host: https://e2-demo-field-eng.cloud.databricks.com
+    run_as:
+      user_name: ${workspace.current_user.userName}
     variables:
       catalog: natyra_demo
-      schema_bronze: sales_bronze
-      schema_silver: sales_silver
-      schema_gold: sales_gold
+      schema: sales_prod
