@@ -1,0 +1,55 @@
+# Databricks Asset Bundle - Sales Medallion Architecture Pipeline
+bundle:
+  name: sales_medallion_pipeline
+
+variables:
+  catalog:
+    description: Unity Catalog name
+    default: natyra_demo
+  schema_bronze:
+    description: Bronze layer schema
+    default: sales_bronze
+  schema_silver:
+    description: Silver layer schema
+    default: sales_silver
+  schema_gold:
+    description: Gold layer schema
+    default: sales_gold
+
+include:
+  - resources/*.yml
+
+workspace:
+  host: https://e2-demo-field-eng.cloud.databricks.com
+
+targets:
+  dev:
+    mode: development
+    default: true
+    workspace:
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      catalog: natyra_demo
+      schema_bronze: sales_bronze_dev
+      schema_silver: sales_silver_dev
+      schema_gold: sales_gold_dev
+
+  staging:
+    mode: development
+    workspace:
+      root_path: /Workspace/Users/${workspace.current_user.userName}/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      catalog: natyra_demo
+      schema_bronze: sales_bronze_staging
+      schema_silver: sales_silver_staging
+      schema_gold: sales_gold_staging
+
+  prod:
+    mode: production
+    workspace:
+      root_path: /Workspace/Shared/.bundle/${bundle.name}/${bundle.target}
+    variables:
+      catalog: natyra_demo
+      schema_bronze: sales_bronze
+      schema_silver: sales_silver
+      schema_gold: sales_gold

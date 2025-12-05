@@ -1,0 +1,120 @@
+resources:
+  jobs:
+    sales_medallion_pipeline:
+      name: "[${bundle.target}] Sales Medallion Pipeline"
+      description: "Bronze -> Silver -> Gold"
+      
+      schedule:
+        quartz_cron_expression: "0 0 2 * * ?"
+        timezone_id: UTC
+        pause_status: PAUSED
+      
+      tasks:
+        - task_key: bronze_ingest_customers
+          notebook_task:
+            notebook_path: ../src/bronze/01_ingest_customers.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema_bronze}
+            source: WORKSPACE
+          environment_key: default
+        
+        - task_key: bronze_ingest_products
+          notebook_task:
+            notebook_path: ../src/bronze/02_ingest_products.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema_bronze}
+            source: WORKSPACE
+          environment_key: default
+        
+        - task_key: bronze_ingest_orders
+          notebook_task:
+            notebook_path: ../src/bronze/03_ingest_orders.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema: ${var.schema_bronze}
+            source: WORKSPACE
+          environment_key: default
+
+        - task_key: silver_transform_customers
+          depends_on:
+            - task_key: bronze_ingest_customers
+          notebook_task:
+            notebook_path: ../src/silver/01_transform_customers.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema_bronze: ${var.schema_bronze}
+              schema_silver: ${var.schema_silver}
+            source: WORKSPACE
+          environment_key: default
+        
+        - task_key: silver_transform_products
+          depends_on:
+            - task_key: bronze_ingest_products
+          notebook_task:
+            notebook_path: ../src/silver/02_transform_products.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema_bronze: ${var.schema_bronze}
+              schema_silver: ${var.schema_silver}
+            source: WORKSPACE
+          environment_key: default
+        
+        - task_key: silver_transform_orders
+          depends_on:
+            - task_key: bronze_ingest_orders
+            - task_key: silver_transform_customers
+            - task_key: silver_transform_products
+          notebook_task:
+            notebook_path: ../src/silver/03_transform_orders.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema_bronze: ${var.schema_bronze}
+              schema_silver: ${var.schema_silver}
+            source: WORKSPACE
+          environment_key: default
+
+        - task_key: gold_daily_sales
+          depends_on:
+            - task_key: silver_transform_orders
+          notebook_task:
+            notebook_path: ../src/gold/01_daily_sales_summary.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema_silver: ${var.schema_silver}
+              schema_gold: ${var.schema_gold}
+            source: WORKSPACE
+          environment_key: default
+        
+        - task_key: gold_customer_metrics
+          depends_on:
+            - task_key: silver_transform_orders
+          notebook_task:
+            notebook_path: ../src/gold/02_customer_metrics.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema_silver: ${var.schema_silver}
+              schema_gold: ${var.schema_gold}
+            source: WORKSPACE
+          environment_key: default
+        
+        - task_key: gold_product_performance
+          depends_on:
+            - task_key: silver_transform_orders
+          notebook_task:
+            notebook_path: ../src/gold/03_product_performance.py
+            base_parameters:
+              catalog: ${var.catalog}
+              schema_silver: ${var.schema_silver}
+              schema_gold: ${var.schema_gold}
+            source: WORKSPACE
+          environment_key: default
+
+      environments:
+        - environment_key: default
+          spec:
+            client: "1"
+            dependencies:
+              - pandas>=2.0.0
+              - numpy>=1.24.0
