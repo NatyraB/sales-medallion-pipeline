@@ -92,18 +92,34 @@ print(f"✅ Valid records for Silver: {df_valid.count()}")
 
 # COMMAND ----------
 
-# Transform to Silver layer format
+# Transform to Silver layer format - matches existing table schema
 df_silver = df_valid.select(
+    # Standardize column names to snake_case
     F.col("AccountId").alias("account_id"),
     F.trim(F.col("AccountName")).alias("account_name"),
+    
+    # Clean and standardize industry
     F.coalesce(F.trim(F.col("AccountIndustry")), F.lit("Unknown")).alias("industry"),
+    
+    # Clean account type
     F.coalesce(F.trim(F.col("AccountType")), F.lit("Unknown")).alias("account_type"),
+    
+    # Standardize country fields
     F.coalesce(F.upper(F.trim(F.col("AccountHQCountry"))), F.lit("UNKNOWN")).alias("hq_country"),
     F.coalesce(F.upper(F.trim(F.col("AccountCountry"))), F.lit("UNKNOWN")).alias("country"),
+    
+    # Clean numeric fields
     F.coalesce(F.col("NumberOfEmployees"), F.lit(0)).alias("employee_count"),
-    F.abs(F.coalesce(F.col("AnnualRevenue"), F.lit(0.0))).alias("annual_revenue_abs"),
+    
+    # Keep original revenue and add absolute value
+    F.coalesce(F.col("AnnualRevenue"), F.lit(0.0)).alias("annual_revenue"),
+    
+    # Keep original metadata
     F.col("ingestion_timestamp"),
-    F.col("source_system")
+    F.col("source_system"),
+    
+    # Add absolute revenue value
+    F.abs(F.coalesce(F.col("AnnualRevenue"), F.lit(0.0))).alias("annual_revenue_abs")
 )
 
 # COMMAND ----------
@@ -193,6 +209,7 @@ column_comments = {
     "hq_country": "Country code where headquarters is located (uppercase)",
     "country": "Primary operating country code (uppercase)",
     "employee_count": "Total employee count (validated, non-negative)",
+    "annual_revenue": "Original annual revenue in USD",
     "annual_revenue_abs": "Annual revenue in USD (absolute value, non-negative)",
     "company_size": "Derived: Employee-based size classification",
     "revenue_tier": "Derived: Revenue-based tier classification",
