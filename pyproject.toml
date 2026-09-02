@@ -1,0 +1,37 @@
+# Minimal dev/tooling manifest for the sales-medallion-pipeline repository.
+#
+# Scope: this file declares tooling & dev/test dependencies ONLY. The pipeline
+# itself runs on the Databricks Runtime (which provides pyspark, delta, etc.),
+# so those runtime packages are intentionally NOT listed here. This manifest
+# exists so the repo-health tool and its test suite are reproducible locally.
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "smp-repo-health"
+version = "0.1.0"
+description = "Repository health report tool for the sales-medallion-pipeline repo (dev tooling only)."
+readme = "docs/repo_health.md"
+requires-python = ">=3.10"
+# The tool itself is stdlib-only — no runtime dependencies.
+dependencies = []
+
+[project.optional-dependencies]
+# Install with:  pip install -e ".[dev]"
+dev = [
+    "pytest>=7.4,<9",
+]
+
+[project.scripts]
+repo-health = "tools.repo_health.cli:main"
+
+[tool.setuptools]
+# Only the tooling package is distributable; the pipeline lives in src/ notebooks.
+packages = ["tools", "tools.repo_health", "tools.repo_health.analyzers"]
+
+[tool.pytest.ini_options]
+minversion = "7.0"
+testpaths = ["tests"]
+addopts = "-q"
