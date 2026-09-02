@@ -1,0 +1,10 @@
+#!/usr/bin/env bash
+# Thin wrapper around `python -m tools.repo_health`.
+# Runs from the repository root regardless of the caller's CWD so the tool
+# always analyzes this repo. Extra args are passed straight through, e.g.:
+#   scripts/repo-health --json
+set -euo pipefail
+
+REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$REPO_ROOT"
+exec "${PYTHON:-python3}" -m tools.repo_health "$@"
