@@ -87,11 +87,16 @@ class TestingAnalyzer(Analyzer):
                     ),
                 )
             )
-        elif not tests_touch_src:
+        elif source_count > 0 and not tests_touch_src:
+            # The pipeline under src/ is the repository's primary code. Tests
+            # existing elsewhere (e.g. for tooling) do not mitigate the fact
+            # that none of the pipeline is exercised, so this is a HIGH gap —
+            # the category grade should reflect zero pipeline coverage, not be
+            # softened to an A by a single MEDIUM penalty.
             report.add(
                 Finding(
                     category=self.key,
-                    severity=Severity.MEDIUM,
+                    severity=Severity.HIGH,
                     title="Pipeline source has no automated test coverage",
                     detail=(
                         f"{len(test_files)} test file(s) exist but none reference `src/`. The "

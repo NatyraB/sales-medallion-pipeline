@@ -35,7 +35,11 @@ EXCLUDE_DIR_NAMES = {
     "tests",
 }
 
-# Markers that identify the repository root when walking up from the CWD.
+# Markers that identify the repository root when walking up from the CWD, in
+# decreasing order of specificity. A more specific marker anywhere in the
+# ancestry wins over a less specific one nearer the start dir, so a stray
+# README.md in a parent directory cannot hijack root detection away from the
+# directory that actually holds databricks.yml / .git.
 ROOT_MARKERS = ("databricks.yml", ".git", "pyproject.toml", "README.md")
 
 # The tool's own package directory. We never analyze ourselves so the report
@@ -87,8 +91,10 @@ def find_repo_root(start: Optional[Path] = None) -> Path:
     like a repo root. Falls back to the tool package's grandparent."""
     start = (start or Path.cwd()).resolve()
     candidates = [start, *start.parents]
-    for candidate in candidates:
-        for marker in ROOT_MARKERS:
+    # Marker precedence dominates proximity: try each marker (most specific
+    # first) across the whole ancestry before falling back to the next one.
+    for marker in ROOT_MARKERS:
+        for candidate in candidates:
             if (candidate / marker).exists():
                 return candidate
     # Fallback: tools/repo_health/ -> tools/ -> <repo root>

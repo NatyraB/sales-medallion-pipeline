@@ -39,6 +39,16 @@ def test_syntax_error_is_high_finding_not_crash(make_ctx):
     assert high and "syntax error" in high[0].title.lower()
 
 
+def test_undecodable_file_is_reported_not_crashed(make_repo):
+    from tools.repo_health.discovery import build_context
+
+    root = make_repo({"src/bronze/01_ok.py": "a = 1\n"})
+    (root / "src" / "bronze" / "02_bad.py").write_bytes(b"\xff\xfe\x00\x80bad")
+    ctx = build_context(root)
+    report = CodeQualityAnalyzer().analyze(ctx)  # must not raise
+    assert any("could not be decoded" in f.title.lower() for f in report.findings)
+
+
 def test_long_file_flagged(make_ctx):
     body = "x = 1\n" * 500
     ctx = make_ctx({"src/bronze/01_long.py": body})

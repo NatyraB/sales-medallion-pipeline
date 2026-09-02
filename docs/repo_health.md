@@ -69,13 +69,16 @@ Useful flags:
 
 ## Example output
 
+Running `python -m tools.repo_health` against this repository currently prints
+(abridged; grades, scores, and severities below match the tool's real output):
+
 ```
 ====================================================================
   REPOSITORY HEALTH REPORT
   /path/to/sales-medallion-pipeline
 ====================================================================
 
-  OVERALL GRADE: B   (86/100)
+  OVERALL GRADE: B   (83/100)
   [█████████████████░░░]
   Findings: 1 high, 7 medium, 5 low
 
@@ -84,7 +87,7 @@ Useful flags:
 --------------------------------------------------------------------
   B  Code Quality                        88/100
   F  Medallion Structure & Naming        55/100
-  C  Test Coverage                       91/100
+  C  Test Coverage                       78/100
   A  Dependency Health                   91/100
   A  Security                            97/100
   A  Cleanup & Refactor Hot-spots        91/100
@@ -93,6 +96,8 @@ Useful flags:
   TOP FINDINGS (most severe first, showing up to 10)
 --------------------------------------------------------------------
   ✖ HIGH     Pipeline source has no automated test coverage
+        9 test file(s) exist but none reference `src/`. The 14 pipeline
+        notebooks under `src/` are untested.
         ↳ Refactor transformation logic out of the notebooks into pure
           functions and cover them with unit tests.
   ▲ MEDIUM   Undeclared third-party imports (1)

@@ -44,6 +44,22 @@ def test_declared_dependency_not_flagged(make_ctx):
     assert not any("Undeclared" in f.title for f in report.findings)
 
 
+def test_malformed_pyproject_degrades_gracefully(make_ctx):
+    # A syntactically invalid pyproject must not crash the analyzer; the
+    # manifest is still detected, but nothing is parsed as declared.
+    ctx = make_ctx(
+        {
+            "src/bronze/01_a.py": _PYSPARK_SRC,
+            "pyproject.toml": "[project\nname = 'oops'  # missing closing bracket\n",
+        }
+    )
+    report = DependencyAnalyzer().analyze(ctx)  # must not raise
+    assert "pyproject.toml" in report.metrics["manifests"]
+    assert report.metrics["declared_packages"] == []
+    # pyspark is still flagged as undeclared.
+    assert "pyspark" in report.metrics["undeclared_imports"]
+
+
 def test_stdlib_and_local_imports_not_third_party(make_ctx):
     ctx = make_ctx(
         {

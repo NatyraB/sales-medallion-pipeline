@@ -11,6 +11,23 @@ def test_find_repo_root_detects_marker(tmp_path):
     assert find_repo_root(nested) == tmp_path.resolve()
 
 
+def test_find_repo_root_prefers_specific_marker_over_nearer_readme(tmp_path):
+    # Parent holds the real project marker; a nearer subdir has only a README.
+    # A stray README must not hijack detection away from databricks.yml.
+    (tmp_path / "databricks.yml").write_text("bundle: {}\n", encoding="utf-8")
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "README.md").write_text("# docs\n", encoding="utf-8")
+    assert find_repo_root(docs) == tmp_path.resolve()
+
+
+def test_find_repo_root_falls_back_to_readme_when_no_specific_marker(tmp_path):
+    (tmp_path / "README.md").write_text("# proj\n", encoding="utf-8")
+    nested = tmp_path / "a" / "b"
+    nested.mkdir(parents=True)
+    assert find_repo_root(nested) == tmp_path.resolve()
+
+
 def test_build_context_collects_src_and_excludes_noise(make_repo):
     root = make_repo(
         {
@@ -45,3 +62,14 @@ def test_build_context_does_not_crash_on_bad_file(make_repo):
     # Should return a context, not raise.
     ctx = build_context(root)
     assert len(ctx.source_layer_files()) == 1
+
+
+def test_build_context_handles_invalid_utf8_file(make_repo):
+    root = make_repo({"src/bronze/01_a.py": "a = 1\n"})
+    # Write raw, non-UTF-8 bytes for a second source file.
+    bad = root / "src" / "bronze" / "02_bad.py"
+    bad.write_bytes(b"\xff\xfe\x00import broken\x80\x81")
+    ctx = build_context(root)  # must not raise
+    bad_sf = [sf for sf in ctx.source_files if sf.rel.endswith("02_bad.py")][0]
+    assert bad_sf.decode_error is True
+    assert bad_sf.tree is None
