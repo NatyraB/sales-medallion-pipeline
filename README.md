@@ -131,6 +131,24 @@ All tables include:
 - Workspace-scoped deployments
 - User context for development
 
+## 🩺 Repository Health Report
+
+A dependency-light CLI tool, [`repo-health`](docs/repo_health.md), statically
+analyzes this repo and prints a prioritized health summary — code quality,
+medallion structure & naming, test coverage, dependency health, security, and
+refactor hot-spots. It runs locally with **no Spark/Databricks and stdlib only**.
+
+```bash
+python -m pip install -e ".[dev]"   # dev/test tooling only (pytest)
+python -m tools.repo_health         # concise ranked summary
+python -m tools.repo_health --json  # machine-readable output
+python -m pytest                    # run the tool's test suite
+```
+
+See [`docs/repo_health.md`](docs/repo_health.md) for what each category covers
+and example output. The tool lives under `tools/` and does not touch pipeline
+logic in `src/`.
+
 ## 📚 References
 
 - [Databricks Asset Bundles](https://docs.databricks.com/dev-tools/bundles/index.html)
